@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthNet - Prescription OCR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/health-api.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/unified-nav.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .health-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .medication-chip {
+            display: inline-block;
+            padding: 0.5rem 0.75rem;
+            background-color: #f0f9ff;
+            color: #0369a1;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin: 0.25rem;
+            border: 1px solid #bae6fd;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .upload-area.dragover {
+            border-color: #0f766e;
+            background-color: #f0fdfa;
+        }
+
+        .upload-area.hover {
+            border-color: #0f766e;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Page Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Prescription OCR</h1>
+            <p class="text-lg text-gray-600">Upload prescription images to extract medication information automatically
+            </p>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="uploadSection" class="health-card p-8 mb-8">
+            <div class="upload-area p-12 text-center" id="uploadArea" role="button" tabindex="0" aria-live="polite">
+                <div class="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Upload Prescription</h3>
+                <p class="text-gray-600 mb-6">Drag and drop your prescription image here, or click to browse</p>
+                <button id="browseBtn"
+                    class="bg-teal-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors">Browse
+                    Files</button>
+                <p class="text-sm text-gray-500 mt-4">Supports JPG, PNG, PDF up to 10MB</p>
+            </div>
+            <input type="file" id="fileInput" accept="image/*,.pdf" class="hidden">
+        </div>
+
+        <!-- Results Section (Hidden initially) -->
+        <div id="resultsSection" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Left: Extracted Raw Text -->
+                <div class="health-card p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Extracted Text</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 h-96 overflow-y-auto">
+                        <pre id="extractedText" class="text-sm text-gray-700 whitespace-pre-wrap font-mono"></pre>
+                    </div>
+                </div>
+
+                <!-- Right: Parsed Medications -->
+                <div class="health-card p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Parsed Medications</h3>
+                    <div class="space-y-4">
+                        <div id="medicationsList" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-center space-x-4">
+                <button id="saveBtn"
+                    class="bg-teal-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-teal-700 transition-colors">Save
+                    to Records</button>
+                <button id="newUploadBtn"
+                    class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors">Upload
+                    Another</button>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="health-card p-6 mt-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">How it works</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-blue-600 font-bold">1</span>
+                    </div>
+                    <h4 class="font-medium text-gray-900 mb-2">Upload Image</h4>
+                    <p class="text-sm text-gray-600">Take a clear photo of your prescription or upload an existing image
+                    </p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-green-600 font-bold">2</span>
+                    </div>
+                    <h4 class="font-medium text-gray-900 mb-2">AI Processing</h4>
+                    <p class="text-sm text-gray-600">Our AI extracts text and identifies medication information</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-purple-600 font-bold">3</span>
+                    </div>
+                    <h4 class="font-medium text-gray-900 mb-2">Save to Records</h4>
+                    <p class="text-sm text-gray-600">Review and save the extracted information to your health records
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Uploads -->
+        <div class="health-card p-6 mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Recent Uploads</h3>
+                <button class="text-sm text-teal-600 hover:text-teal-700">View All</button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-medium text-gray-900">Prescription_001.jpg</p>
+                        <p class="text-sm text-gray-500">December 15, 2024 - 3:45 PM</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm text-green-600 font-medium">Processed</span>
+                        <p class="text-xs text-gray-500">3 medications found</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-medium text-gray-900">Prescription_002.pdf</p>
+                        <p class="text-sm text-gray-500">December 12, 2024 - 11:20 AM</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm text-green-600 font-medium">Processed</span>
+                        <p class="text-xs text-gray-500">2 medications found</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const extractedText = document.getElementById('extractedText');
+        const medicationsList = document.getElementById('medicationsList');
+        const saveBtn = document.getElementById('saveBtn');
+        const newUploadBtn = document.getElementById('newUploadBtn');
+        let isProcessing = false;
+
+        function bytesToSize(bytes) {
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            if (bytes === 0) return '0 Byte';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
+            return Math.round(bytes / Math.pow(1024, i)) + ' ' + sizes[i];
+        }
+
+        function resetUploadArea() {
+            uploadArea.innerHTML = `
+                <div class="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Upload Prescription</h3>
+                <p class="text-gray-600 mb-6">Drag and drop your prescription image here, or click to browse</p>
+                <button class="bg-teal-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors">Browse Files</button>
+                <p class="text-sm text-gray-500 mt-4">Supports JPG, PNG, PDF up to 10MB</p>
+            `;
+        }
+
+        // Sample extracted text and medications for demonstration
+        const sampleExtractedText = `Dr. Sarah Johnson
+Medical Center
+123 Healthcare Ave
+Phone: (555) 123-4567
+
+Patient: John Doe
+DOB: 01/15/1980
+Date: 12/15/2024
+
+Rx:
+1. Atorvastatin 10mg tablet
+   Take 1 tablet daily at bedtime
+   Quantity: 30 tablets
+   Refills: 2
+
+2. Metformin 500mg tablet
+   Take 1 tablet twice daily with meals
+   Quantity: 60 tablets
+   Refills: 3
+
+3. Lisinopril 5mg tablet
+   Take 1 tablet daily in the morning
+   Quantity: 30 tablets
+   Refills: 1
+
+Signature: Dr. Sarah Johnson
+DEA: AB1234567`;
+
+        const sampleMedications = [
+            { name: 'Atorvastatin', dosage: '10mg', frequency: '1 tablet daily at bedtime', quantity: '30 tablets' },
+            { name: 'Metformin', dosage: '500mg', frequency: '1 tablet twice daily with meals', quantity: '60 tablets' },
+            { name: 'Lisinopril', dosage: '5mg', frequency: '1 tablet daily in the morning', quantity: '30 tablets' }
+        ];
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (isProcessing) return;
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Click anywhere in the upload area to browse
+        uploadArea.addEventListener('click', () => {
+            if (isProcessing) return;
+            fileInput.click();
+        });
+
+        // Keyboard accessibility (Enter/Space)
+        uploadArea.addEventListener('keydown', (e) => {
+            if (isProcessing) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (isProcessing) return;
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Validate type and size (max 10MB, images or PDF)
+            const maxBytes = 10 * 1024 * 1024;
+            const isImage = file.type.startsWith('image/');
+            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+            if (!isImage && !isPdf) {
+                uploadArea.innerHTML = `
+                    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span class="text-red-600 font-bold">!</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Unsupported file type</h3>
+                    <p class="text-gray-600">Please upload an image or PDF file.</p>
+                    <button class="mt-4 text-teal-600 hover:text-teal-700 underline" id="tryAgainBtn">Try again</button>
+                `;
+                const tryAgain = document.getElementById('tryAgainBtn');
+                if (tryAgain) tryAgain.addEventListener('click', resetUploadArea);
+                return;
+            }
+
+            if (file.size > maxBytes) {
+                uploadArea.innerHTML = `
+                    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span class="text-red-600 font-bold">!</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">File too large</h3>
+                    <p class="text-gray-600">Maximum file size is 10MB.</p>
+                    <button class="mt-4 text-teal-600 hover:text-teal-700 underline" id="tryAgainBtn">Try again</button>
+                `;
+                const tryAgain = document.getElementById('tryAgainBtn');
+                if (tryAgain) tryAgain.addEventListener('click', resetUploadArea);
+                return;
+            }
+
+            isProcessing = true;
+
+            // Show loading state with preview
+            const fileSizeLabel = bytesToSize(file.size);
+            const previewUrl = isImage ? URL.createObjectURL(file) : '';
+
+            uploadArea.innerHTML = `
+                <div class="flex items-center justify-center mb-4">
+                    ${isImage ? `<img src="${previewUrl}" alt="Preview" class="h-20 w-20 object-cover rounded-lg border" />` :
+                    `<div class="h-20 w-20 rounded-lg border bg-gray-100 flex items-center justify-center text-gray-600">PDF</div>`}
+                </div>
+                <p class="text-sm text-gray-700 mb-4">${file.name} • ${fileSizeLabel}</p>
+                <div class="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Processing...</h3>
+                <p class="text-gray-600">Extracting text from your prescription</p>
+            `;
+
+            // Simulate processing delay
+            setTimeout(() => {
+                showResults();
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                isProcessing = false;
+            }, 3000);
+        }
+
+        function showResults() {
+            uploadSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+
+            // Populate extracted text
+            extractedText.textContent = sampleExtractedText;
+
+            // Populate medications (safely)
+            medicationsList.innerHTML = '';
+            sampleMedications.forEach(med => {
+                const medElement = document.createElement('div');
+                medElement.className = 'p-4 border border-gray-200 rounded-lg';
+
+                const header = document.createElement('div');
+                header.className = 'flex items-center justify-between mb-2';
+
+                const title = document.createElement('h4');
+                title.className = 'font-medium text-gray-900';
+                title.textContent = med.name;
+
+                const chip = document.createElement('span');
+                chip.className = 'medication-chip';
+                chip.textContent = med.dosage;
+
+                header.appendChild(title);
+                header.appendChild(chip);
+
+                const freq = document.createElement('p');
+                freq.className = 'text-sm text-gray-600 mb-1';
+                freq.textContent = med.frequency;
+
+                const qty = document.createElement('p');
+                qty.className = 'text-xs text-gray-500';
+                qty.textContent = `Quantity: ${med.quantity}`;
+
+                medElement.appendChild(header);
+                medElement.appendChild(freq);
+                medElement.appendChild(qty);
+
+                medicationsList.appendChild(medElement);
+            });
+        }
+
+        // Save button functionality
+        saveBtn.addEventListener('click', () => {
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+
+            setTimeout(() => {
+                saveBtn.textContent = 'Saved!';
+                saveBtn.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+                saveBtn.classList.add('bg-green-600');
+
+                setTimeout(() => {
+                    saveBtn.textContent = 'Save to Records';
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('bg-green-600');
+                    saveBtn.classList.add('bg-teal-600', 'hover:bg-teal-700');
+                }, 2000);
+            }, 1500);
+        });
+
+        // New upload button functionality
+        newUploadBtn.addEventListener('click', () => {
+            resultsSection.classList.add('hidden');
+            uploadSection.classList.remove('hidden');
+            resetUploadArea();
+            isProcessing = false;
+        });
+    </script>
+</body>
+
+</html>

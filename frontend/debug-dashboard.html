@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/health-api.js"></script>
+    <script src="js/unified-nav.js"></script>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Dashboard Debug Information</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Authentication Status -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Authentication Status</h2>
+                <div id="auth-status" class="space-y-2">
+                    <p><strong>Token:</strong> <span id="token-status">Checking...</span></p>
+                    <p><strong>Unified Nav:</strong> <span id="unified-nav-status">Checking...</span></p>
+                    <p><strong>User:</strong> <span id="user-status">Checking...</span></p>
+                </div>
+            </div>
+
+            <!-- API Status -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">API Status</h2>
+                <div id="api-status" class="space-y-2">
+                    <p><strong>Backend:</strong> <span id="backend-status">Checking...</span></p>
+                    <p><strong>Health Dashboard:</strong> <span id="health-status">Checking...</span></p>
+                    <p><strong>AI Recommendations:</strong> <span id="ai-status">Checking...</span></p>
+                </div>
+            </div>
+
+            <!-- Navigation Test -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Navigation Test</h2>
+                <div class="space-y-2">
+                    <a href="dashboard.html"
+                        class="block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-center">
+                        Go to Dashboard
+                    </a>
+                    <a href="index.html"
+                        class="block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-center">
+                        Go to Home
+                    </a>
+                    <a href="questionnaire.html"
+                        class="block bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 text-center">
+                        Go to Questionnaire
+                    </a>
+                </div>
+            </div>
+
+            <!-- Console Logs -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Console Logs</h2>
+                <div id="console-logs" class="bg-gray-100 p-4 rounded text-sm font-mono h-32 overflow-y-auto">
+                    <p>Loading logs...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="error-display" class="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded hidden">
+            <strong>Error:</strong> <span id="error-message"></span>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logsDiv = document.getElementById('console-logs');
+
+        console.log = function (...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('p');
+            logEntry.className = 'text-green-600';
+            logEntry.textContent = 'LOG: ' + args.join(' ');
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        };
+
+        console.error = function (...args) {
+            originalError.apply(console, args);
+            const logEntry = document.createElement('p');
+            logEntry.className = 'text-red-600';
+            logEntry.textContent = 'ERROR: ' + args.join(' ');
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        };
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            console.log('Debug page loaded');
+
+            // Check authentication status
+            const token = localStorage.getItem('token');
+            document.getElementById('token-status').textContent = token ? 'Present' : 'Missing';
+
+            // Check unified navigation
+            setTimeout(() => {
+                if (typeof unifiedNav !== 'undefined') {
+                    document.getElementById('unified-nav-status').textContent = 'Loaded';
+                    if (unifiedNav.currentUser) {
+                        document.getElementById('user-status').textContent = unifiedNav.currentUser.name || 'User';
+                    } else {
+                        document.getElementById('user-status').textContent = 'Not authenticated';
+                    }
+                } else {
+                    document.getElementById('unified-nav-status').textContent = 'Failed to load';
+                }
+            }, 1000);
+
+            // Check backend status
+            try {
+                const response = await fetch('http://localhost:8000/');
+                if (response.ok) {
+                    document.getElementById('backend-status').textContent = 'Online';
+                } else {
+                    document.getElementById('backend-status').textContent = 'Error: ' + response.status;
+                }
+            } catch (error) {
+                document.getElementById('backend-status').textContent = 'Offline';
+                console.error('Backend check failed:', error);
+            }
+
+            // Check API endpoints if authenticated
+            if (token) {
+                try {
+                    const api = new HealthNetAPI();
+
+                    // Test health dashboard
+                    try {
+                        const healthResponse = await api.makeRequest('/api/health/dashboard', { method: 'GET' });
+                        document.getElementById('health-status').textContent = 'Working';
+                        console.log('Health dashboard response:', healthResponse);
+                    } catch (error) {
+                        document.getElementById('health-status').textContent = 'Error: ' + error.message;
+                        console.error('Health dashboard error:', error);
+                    }
+
+                    // Test AI recommendations
+                    try {
+                        const aiResponse = await api.makeRequest('/api/ai/recommendations', { method: 'GET' });
+                        document.getElementById('ai-status').textContent = 'Working';
+                        console.log('AI recommendations response:', aiResponse);
+                    } catch (error) {
+                        document.getElementById('ai-status').textContent = 'Error: ' + error.message;
+                        console.error('AI recommendations error:', error);
+                    }
+                } catch (error) {
+                    console.error('API test failed:', error);
+                }
+            } else {
+                document.getElementById('health-status').textContent = 'No token';
+                document.getElementById('ai-status').textContent = 'No token';
+            }
+        });
+    </script>
+</body>
+
+</html>

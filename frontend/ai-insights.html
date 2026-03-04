@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthNet - AI Health Insights</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/health-api.js"></script>
+    <script src="js/unified-nav.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .risk-low { color: #10b981; }
+        .risk-medium { color: #f59e0b; }
+        .risk-high { color: #ef4444; }
+        .loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">🤖 AI-Powered Health Insights</h1>
+            <p class="text-xl text-gray-600">Get personalized health recommendations powered by advanced AI</p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-12">
+            <div class="loading inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+            <p class="mt-4 text-gray-600">Loading your AI health insights...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center py-12">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                <p class="font-bold">Error Loading AI Insights</p>
+                <p id="errorMessage">Please complete your health assessment first.</p>
+                <button onclick="window.location.href='questionnaire.html'" class="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    Complete Health Assessment
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Insights Content -->
+        <div id="aiContent" class="hidden space-y-8">
+            <!-- Health Summary -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Health Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <div class="text-3xl font-bold text-blue-600" id="overallHealthScore">--</div>
+                        <div class="text-sm text-gray-600">Overall Health Score</div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-3xl font-bold text-green-600" id="fitnessScore">--</div>
+                        <div class="text-sm text-gray-600">Fitness Score</div>
+                    </div>
+                    <div class="text-center p-4 bg-purple-50 rounded-lg">
+                        <div class="text-3xl font-bold text-purple-600" id="dailyCalories">--</div>
+                        <div class="text-sm text-gray-600">Daily Calories Needed</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Assessment -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">⚠️ Risk Assessment</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="p-4 border rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold">Diabetes Risk</span>
+                            <span class="text-sm" id="diabetesRiskLevel">--</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-red-500 h-2 rounded-full" id="diabetesRiskBar" style="width: 0%"></div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1" id="diabetesRiskPercent">0%</div>
+                    </div>
+                    <div class="p-4 border rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold">Hypertension Risk</span>
+                            <span class="text-sm" id="hypertensionRiskLevel">--</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-orange-500 h-2 rounded-full" id="hypertensionRiskBar" style="width: 0%"></div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1" id="hypertensionRiskPercent">0%</div>
+                    </div>
+                    <div class="p-4 border rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold">Heart Disease Risk</span>
+                            <span class="text-sm" id="heartDiseaseRiskLevel">--</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-yellow-500 h-2 rounded-full" id="heartDiseaseRiskBar" style="width: 0%"></div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1" id="heartDiseaseRiskPercent">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Recommendations -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">💡 AI Recommendations</h2>
+                <div id="recommendationsContainer" class="space-y-4">
+                    <!-- Recommendations will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Nutrition Plan -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🍎 Personalized Nutrition Plan</h2>
+                <div id="nutritionContainer" class="space-y-6">
+                    <!-- Nutrition plan will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Exercise Plan -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">💪 Personalized Exercise Plan</h2>
+                <div id="exerciseContainer" class="space-y-6">
+                    <!-- Exercise plan will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 text-center space-x-4">
+            <button onclick="refreshAIInsights()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                🔄 Refresh AI Insights
+            </button>
+            <button onclick="window.location.href='questionnaire.html'" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors">
+                📝 Update Health Assessment
+            </button>
+                                    <button onclick="window.location.href='dashboard.html'" class="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors">
+                📊 Go to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const api = new HealthNetAPI();
+        let aiData = {};
+
+        // Load user name
+        async function loadUserName() {
+            try {
+                const response = await api.makeRequest('/api/auth/me', { method: 'GET' });
+                document.getElementById('userName').textContent = response.user.name;
+            } catch (error) {
+                console.error('Error loading user name:', error);
+            }
+        }
+
+        // Load AI insights
+        async function loadAIInsights() {
+            try {
+                // Load comprehensive health analysis
+                const healthAnalysis = await api.makeRequest('/api/ai/health-analysis', { method: 'GET' });
+                
+                // Load nutrition plan
+                const nutritionPlan = await api.makeRequest('/api/ai/nutrition-plan', { method: 'GET' });
+                
+                // Load exercise plan
+                const exercisePlan = await api.makeRequest('/api/ai/exercise-plan', { method: 'GET' });
+                
+                // Store data
+                aiData = {
+                    healthAnalysis,
+                    nutritionPlan,
+                    exercisePlan
+                };
+                
+                // Display data
+                displayHealthSummary(healthAnalysis);
+                displayRiskAssessment(healthAnalysis);
+                displayRecommendations(healthAnalysis);
+                displayNutritionPlan(nutritionPlan);
+                displayExercisePlan(exercisePlan);
+                
+                // Show content
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('aiContent').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading AI insights:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message || 'Failed to load AI insights. Please complete your health assessment first.';
+            }
+        }
+
+        // Display health summary
+        function displayHealthSummary(data) {
+            const summary = data.health_summary;
+            document.getElementById('overallHealthScore').textContent = summary.overall_health_score;
+            document.getElementById('fitnessScore').textContent = summary.fitness_score;
+            document.getElementById('dailyCalories').textContent = summary.daily_calories_needed;
+        }
+
+        // Display risk assessment
+        function displayRiskAssessment(data) {
+            const risks = data.risk_assessment;
+            
+            // Diabetes risk
+            const diabetesRisk = (risks.diabetes_risk * 100).toFixed(1);
+            document.getElementById('diabetesRiskPercent').textContent = diabetesRisk + '%';
+            document.getElementById('diabetesRiskBar').style.width = diabetesRisk + '%';
+            document.getElementById('diabetesRiskLevel').textContent = getRiskLevel(risks.diabetes_risk);
+            document.getElementById('diabetesRiskLevel').className = 'text-sm ' + getRiskColor(risks.diabetes_risk);
+            
+            // Hypertension risk
+            const hypertensionRisk = (risks.hypertension_risk * 100).toFixed(1);
+            document.getElementById('hypertensionRiskPercent').textContent = hypertensionRisk + '%';
+            document.getElementById('hypertensionRiskBar').style.width = hypertensionRisk + '%';
+            document.getElementById('hypertensionRiskLevel').textContent = getRiskLevel(risks.hypertension_risk);
+            document.getElementById('hypertensionRiskLevel').className = 'text-sm ' + getRiskColor(risks.hypertension_risk);
+            
+            // Heart disease risk
+            const heartDiseaseRisk = (risks.heart_disease_risk * 100).toFixed(1);
+            document.getElementById('heartDiseaseRiskPercent').textContent = heartDiseaseRisk + '%';
+            document.getElementById('heartDiseaseRiskBar').style.width = heartDiseaseRisk + '%';
+            document.getElementById('heartDiseaseRiskLevel').textContent = getRiskLevel(risks.heart_disease_risk);
+            document.getElementById('heartDiseaseRiskLevel').className = 'text-sm ' + getRiskColor(risks.heart_disease_risk);
+        }
+
+        // Get risk level text
+        function getRiskLevel(risk) {
+            if (risk < 0.3) return 'Low';
+            if (risk < 0.6) return 'Medium';
+            return 'High';
+        }
+
+        // Get risk color
+        function getRiskColor(risk) {
+            if (risk < 0.3) return 'risk-low';
+            if (risk < 0.6) return 'risk-medium';
+            return 'risk-high';
+        }
+
+        // Display recommendations
+        function displayRecommendations(data) {
+            const container = document.getElementById('recommendationsContainer');
+            container.innerHTML = '';
+            
+            data.recommendations.forEach(rec => {
+                const priorityColor = rec.priority === 'high' ? 'border-red-500' : 
+                                    rec.priority === 'medium' ? 'border-yellow-500' : 'border-green-500';
+                
+                const recHtml = `
+                    <div class="border-l-4 ${priorityColor} bg-gray-50 p-4 rounded-r-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-semibold text-lg">${rec.category}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full ${
+                                rec.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                            }">${rec.priority} priority</span>
+                        </div>
+                        <p class="text-gray-700 mb-3">${rec.recommendation}</p>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-sm text-gray-600">Action Items:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                ${rec.action_items.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ${rec.lifestyle_tips ? `
+                            <div class="mt-3 space-y-2">
+                                <h4 class="font-medium text-sm text-gray-600">Lifestyle Tips:</h4>
+                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                    ${rec.lifestyle_tips.map(tip => `<li>${tip}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                container.innerHTML += recHtml;
+            });
+        }
+
+        // Display nutrition plan
+        function displayNutritionPlan(data) {
+            const container = document.getElementById('nutritionContainer');
+            
+            if (data.error) {
+                container.innerHTML = `
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                        <p>${data.error}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const mealPlan = data.meal_plan;
+            const macroTargets = mealPlan.macro_targets;
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-600">${macroTargets.protein_g}g</div>
+                        <div class="text-sm text-gray-600">Protein</div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600">${macroTargets.carbs_g}g</div>
+                        <div class="text-sm text-gray-600">Carbohydrates</div>
+                    </div>
+                    <div class="text-center p-4 bg-purple-50 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-600">${macroTargets.fat_g}g</div>
+                        <div class="text-sm text-gray-600">Fat</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${Object.entries(mealPlan.meals).map(([mealType, meal]) => `
+                        <div class="border rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 capitalize">${mealType}</h3>
+                            <div class="space-y-2">
+                                ${meal.foods.map(food => `
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm">${food.name}</span>
+                                        <span class="text-sm text-gray-600">${food.portion} (${food.calories} cal)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="mt-3 pt-3 border-t">
+                                <h4 class="font-medium text-sm mb-2">Tips:</h4>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    ${meal.tips.map(tip => `<li>• ${tip}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Display exercise plan
+        function displayExercisePlan(data) {
+            const container = document.getElementById('exerciseContainer');
+            
+            if (data.error) {
+                container.innerHTML = `
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                        <p>${data.error}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const workoutPlan = data.workout_plan;
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-600">${workoutPlan.fitness_score}</div>
+                        <div class="text-sm text-gray-600">Fitness Score</div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600 capitalize">${workoutPlan.fitness_level}</div>
+                        <div class="text-sm text-gray-600">Fitness Level</div>
+                    </div>
+                    <div class="text-center p-4 bg-purple-50 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-600">${workoutPlan.weekly_calories}</div>
+                        <div class="text-sm text-gray-600">Weekly Calories Burned</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-semibold text-lg mb-4">Weekly Workout Schedule</h3>
+                        <div class="space-y-3">
+                            ${Object.entries(workoutPlan.weekly_schedule).map(([day, workout]) => `
+                                <div class="border rounded-lg p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h4 class="font-medium capitalize">${day}</h4>
+                                        <span class="px-2 py-1 text-xs rounded-full ${
+                                            workout.type === 'rest' ? 'bg-gray-100 text-gray-800' :
+                                            workout.intensity === 'high' ? 'bg-red-100 text-red-800' :
+                                            workout.intensity === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-green-100 text-green-800'
+                                        }">${workout.type} (${workout.intensity})</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        ${workout.type === 'rest' ? 
+                                            workout.activities.join(', ') :
+                                            `${workout.duration} minutes • ${workout.calories} calories`
+                                        }
+                                    </div>
+                                    ${workout.exercises ? `
+                                        <div class="mt-2 text-sm">
+                                            ${workout.exercises.map(ex => 
+                                                `${ex.name}${ex.sets ? ` - ${ex.sets} sets` : ''}${ex.reps ? ` x ${ex.reps} reps` : ''}${ex.duration ? ` - ${ex.duration}s` : ''}`
+                                            ).join(', ')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-lg mb-4">Safety Guidelines</h3>
+                        <div class="space-y-2">
+                            ${workoutPlan.safety_guidelines.map(guideline => `
+                                <div class="flex items-start space-x-2">
+                                    <span class="text-red-500 mt-1">⚠️</span>
+                                    <span class="text-sm text-gray-700">${guideline}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h3 class="font-semibold text-lg mb-4 mt-6">Progression Plan</h3>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-medium mb-2">${workoutPlan.progression_plan.goal}</h4>
+                            <p class="text-sm text-gray-600 mb-3">Timeline: ${workoutPlan.progression_plan.timeline}</p>
+                            <ul class="text-sm text-gray-700 space-y-1">
+                                ${workoutPlan.progression_plan.milestones.map(milestone => `
+                                    <li>• ${milestone}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Refresh AI insights
+        function refreshAIInsights() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('aiContent').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            loadAIInsights();
+        }
+
+        // Initialize page
+        async function init() {
+            await loadUserName();
+            await loadAIInsights();
+        }
+
+        // Start when page loads
+        init();
+    </script>
+</body>
+</html>
